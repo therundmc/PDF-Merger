@@ -40,7 +40,7 @@ class PDFConcatenator:
         self.add_button.pack(pady=10, side=tk.LEFT, anchor=tk.SW)
 
         # "Concatenate PDFs" button
-        self.concat_button = tk.Button(root, text="Concatenate PDFs", command=self.concat_pdfs, bg="#001f3f", fg="white",
+        self.concat_button = tk.Button(root, text="Concatenate PDFs", command=self.concat_pdfs, bg="#222222", fg="white",
                                        width=20, font=("Helvetica", 12))
         self.concat_button.pack(pady=10, side=tk.LEFT, anchor=tk.SW)
 
