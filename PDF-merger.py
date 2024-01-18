@@ -158,7 +158,7 @@ class PDFConcatenator:
 
     def insert_text(self, page, text):
         # Top margin in points (1 point = 1/72 inch)
-        top_margin = 8
+        top_margin = 3
 
         text_box = fitz.Rect(0, top_margin, page.rect.width, top_margin + 20)
 
