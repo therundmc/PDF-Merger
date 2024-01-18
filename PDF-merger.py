@@ -2,6 +2,7 @@ import fitz  # PyMuPDF
 import tkinter as tk
 from tkinter import filedialog
 from tkinter import simpledialog
+import os
 
 class PDFConcatenator:
     def __init__(self, root):
@@ -15,6 +16,32 @@ class PDFConcatenator:
         # Frame for PDF list and associated buttons
         self.list_frame = tk.Frame(root, bg="white")
         self.list_frame.pack(fill=tk.BOTH, expand=True)
+
+        # Frame for the text box and label
+        self.text_frame = tk.Frame(root, bg="white")
+        self.text_frame.pack(fill=tk.X, padx=10, pady=10)
+
+        # Frame for the buttons
+        self.button_frame = tk.Frame(root, bg="white")
+        self.button_frame.pack(fill=tk.X, padx=10, pady=10)
+
+        # Checkbox, label, and text entry
+        self.enable_text = tk.BooleanVar()
+        self.text_to_insert = tk.StringVar()
+        self.text_checkbox = tk.Checkbutton(self.text_frame, text="Add Text to PDF", variable=self.enable_text, bg="white")
+        self.text_checkbox.pack(pady=10, side=tk.LEFT, anchor=tk.W)
+        self.text_entry = tk.Entry(self.text_frame, textvariable=self.text_to_insert)
+        self.text_entry.pack(pady=10, side=tk.LEFT, fill=tk.X, expand=True, anchor=tk.W)
+
+        # "Add PDFs" and "Concatenate PDFs" buttons
+        self.add_button = tk.Button(self.button_frame, text="Add PDFs", command=self.add_pdfs, bg="grey", fg="white", width=20, font=("Helvetica", 12))
+        self.add_button.pack(pady=10, side=tk.LEFT, anchor=tk.SW)
+        # "Open PDF" button (initially disabled)
+        self.open_pdf_button = tk.Button(self.button_frame, text="Open PDF", command=self.open_pdf, bg="grey", fg="white", width=20, font=("Helvetica", 12), state=tk.DISABLED)
+        self.open_pdf_button.pack(pady=10, side=tk.LEFT, anchor=tk.SW)
+
+        self.concat_button = tk.Button(self.button_frame, text="Concatenate PDFs", command=self.concat_pdfs, bg="green", fg="white", width=20, font=("Helvetica", 12))
+        self.concat_button.pack(pady=10, side=tk.RIGHT, anchor=tk.SW)
 
         # Label for PDF list
         self.list_label = tk.Label(self.list_frame, text="List of PDFs", font=("Helvetica", 16, "bold"), bg="white")
@@ -34,19 +61,11 @@ class PDFConcatenator:
 
         self.inner_frame.bind("<Configure>", lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
 
-        # "Add PDFs" button
-        self.add_button = tk.Button(root, text="Add PDFs", command=self.add_pdfs, bg="#001f3f", fg="white", width=20,
-                                    font=("Helvetica", 12))
-        self.add_button.pack(pady=10, side=tk.LEFT, anchor=tk.SW)
-
-        # "Concatenate PDFs" button
-        self.concat_button = tk.Button(root, text="Concatenate PDFs", command=self.concat_pdfs, bg="#222222", fg="white",
-                                       width=20, font=("Helvetica", 12))
-        self.concat_button.pack(pady=10, side=tk.LEFT, anchor=tk.SW)
 
         # Status label
         self.status_label = tk.Label(root, text="", fg="green", bg="white", font=("Helvetica", 12))
         self.status_label.pack(pady=10, side=tk.BOTTOM, anchor=tk.SE)
+
 
     def add_pdfs(self):
         files = filedialog.askopenfilenames(filetypes=[("PDF files", "*.pdf")])
@@ -101,6 +120,10 @@ class PDFConcatenator:
             self.page_ranges = []
             self.update_file_entries()
 
+            # Store the output path and enable the "Open PDF" button
+            self.output_pdf_path = output_path
+            self.open_pdf_button.config(state=tk.NORMAL)
+
     def get_max_page(self, file_path):
         pdf_document = fitz.open(file_path)
         max_page = pdf_document.page_count
@@ -110,21 +133,41 @@ class PDFConcatenator:
     def concat_pdf(self, input_paths, page_ranges, output_path):
         pdf_merger = fitz.open()
 
-        for i, (path, page_range) in enumerate(zip(input_paths, page_ranges)):
-            start_page, end_page = page_range
+        for path, page_range in zip(input_paths, page_ranges):
             pdf_document = fitz.open(path)
+            start_page, end_page = self.adjust_page_range(page_range, pdf_document)
 
-            if start_page < 1:
-                start_page = 1
-            if end_page > pdf_document.page_count:
-                end_page = pdf_document.page_count
+            for page_num in range(start_page - 1, end_page):
+                page = pdf_document[page_num]
+                if self.enable_text.get():
+                    self.insert_text(page, self.text_to_insert.get())
 
             pdf_merger.insert_pdf(pdf_document, from_page=start_page - 1, to_page=end_page - 1)
-
             pdf_document.close()
 
         pdf_merger.save(output_path)
         pdf_merger.close()
+
+    def adjust_page_range(self, page_range, pdf_document):
+        start_page, end_page = page_range
+        if start_page < 1:
+            start_page = 1
+        if end_page > pdf_document.page_count:
+            end_page = pdf_document.page_count
+        return start_page, end_page
+
+    def insert_text(self, page, text):
+        # Top margin in points (1 point = 1/72 inch)
+        top_margin = 8
+
+        text_box = fitz.Rect(0, top_margin, page.rect.width, top_margin + 20)
+
+        # Insert the text into the text box, centered horizontally
+        page.insert_textbox(text_box, text, fontsize=9, fontname="helv", align=1)
+
+    def open_pdf(self):
+        if self.output_pdf_path:
+            os.startfile(self.output_pdf_path)  # Open the PDF with the default viewer
 
 if __name__ == "__main__":
     root = tk.Tk()
